@@ -5,7 +5,7 @@ const { ChannelType } = require('discord.js');
 const { MISSION_VOICE_CONNECT_ROLE_ID, MISSION_VOICE_HUB_NAME } = require('../config');
 
 const STATE_PATH = path.join(__dirname, '..', '..', 'data', 'mission-voice-rooms.json');
-const missionRoomPattern = /^Mission (\d+)$/;
+const missionRoomPattern = /^┃🎙️・Mission (\d+)$/;
 const creationQueues = new Map();
 
 function emptyState() {
