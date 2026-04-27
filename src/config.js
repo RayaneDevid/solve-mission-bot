@@ -2,10 +2,11 @@
 require('dotenv').config();
 
 const VILLAGE_CHANNELS = {
-  konoha: process.env.MISSIONS_CHANNEL_KONOHA,
-  oto:    process.env.MISSIONS_CHANNEL_OTO,
-  suna:   process.env.MISSIONS_CHANNEL_SUNA,
-  kiri:   process.env.MISSIONS_CHANNEL_KIRI,
+  konoha:  process.env.MISSIONS_CHANNEL_KONOHA,
+  oto:     process.env.MISSIONS_CHANNEL_OTO,
+  suna:    process.env.MISSIONS_CHANNEL_SUNA,
+  kiri:    process.env.MISSIONS_CHANNEL_KIRI,
+  samurai: process.env.MISSIONS_CHANNEL_SAMURAI,
 };
 
 function channelFor(village) {
@@ -13,10 +14,11 @@ function channelFor(village) {
 }
 
 const VILLAGES = [
-  { name: 'Konoha', value: 'konoha' },
-  { name: 'Oto',    value: 'oto'    },
-  { name: 'Suna',   value: 'suna'   },
-  { name: 'Kiri',   value: 'kiri'   },
+  { name: 'Konoha',  value: 'konoha'  },
+  { name: 'Oto',     value: 'oto'     },
+  { name: 'Suna',    value: 'suna'    },
+  { name: 'Kiri',    value: 'kiri'    },
+  { name: 'Samurai', value: 'samurai' },
 ];
 
 const RANGS = [
@@ -43,10 +45,11 @@ function layoutFor(village, rang) {
 }
 
 const VILLAGE_ROLES = {
-  konoha: process.env.MISSIONS_ROLE_KONOHA || '1390396924343095297',
-  oto:    process.env.MISSIONS_ROLE_OTO    || '1390396990625681488',
-  suna:   process.env.MISSIONS_ROLE_SUNA   || '1390396888599101522',
-  kiri:   process.env.MISSIONS_ROLE_KIRI   || '1418935420187836438',
+  konoha:  process.env.MISSIONS_ROLE_KONOHA  || '1390396924343095297',
+  oto:     process.env.MISSIONS_ROLE_OTO     || '1390396990625681488',
+  suna:    process.env.MISSIONS_ROLE_SUNA    || '1390396888599101522',
+  kiri:    process.env.MISSIONS_ROLE_KIRI    || '1418935420187836438',
+  samurai: process.env.MISSIONS_ROLE_SAMURAI,
 };
 
 const MISSION_VOICE_CONNECT_ROLE_ID = process.env.MISSION_VOICE_CONNECT_ROLE_ID || '1497615181625430092';
