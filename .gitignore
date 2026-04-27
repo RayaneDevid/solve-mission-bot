@@ -12,6 +12,9 @@ logs/
 npm-debug.log*
 pnpm-debug.log*
 
+# Runtime state
+data/*.json
+
 # OS
 .DS_Store
 Thumbs.db

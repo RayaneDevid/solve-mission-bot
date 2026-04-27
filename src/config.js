@@ -49,4 +49,15 @@ const VILLAGE_ROLES = {
   kiri:   process.env.MISSIONS_ROLE_KIRI   || '1418935420187836438',
 };
 
-module.exports = { channelFor, VILLAGES, RANGS, layoutFor, VILLAGE_ROLES };
+const MISSION_VOICE_CONNECT_ROLE_ID = process.env.MISSION_VOICE_CONNECT_ROLE_ID || '1497615181625430092';
+const MISSION_VOICE_HUB_NAME = process.env.MISSION_VOICE_HUB_NAME || 'Créer ton salon Mission';
+
+module.exports = {
+  channelFor,
+  VILLAGES,
+  RANGS,
+  layoutFor,
+  VILLAGE_ROLES,
+  MISSION_VOICE_CONNECT_ROLE_ID,
+  MISSION_VOICE_HUB_NAME,
+};

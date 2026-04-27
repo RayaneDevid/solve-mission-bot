@@ -7,8 +7,14 @@ const path = require('path');
 const { channelFor } = require('./config');
 const { createMission, updateMissionDescription, attachDiscordRefs, formatMissionNumber } = require('./utils/supabase');
 const { generateMission } = require('./utils/generateMission');
+const { cleanupEmptyMissionRooms, handleMissionVoiceStateUpdate } = require('./utils/missionVoiceRooms');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
+});
 
 // Load commands
 const commands = new Map();
@@ -18,8 +24,17 @@ for (const file of fs.readdirSync(commandsDir).filter(f => f.endsWith('.js'))) {
   commands.set(cmd.data.name, cmd);
 }
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log({ event: 'bot.ready', tag: client.user.tag });
+  await cleanupEmptyMissionRooms(client);
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  try {
+    await handleMissionVoiceStateUpdate(oldState, newState);
+  } catch (err) {
+    console.error({ event: 'voiceState.error', error: err.message, stack: err.stack });
+  }
 });
 
 client.on('interactionCreate', async (interaction) => {
