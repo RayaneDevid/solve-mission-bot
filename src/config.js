@@ -50,7 +50,7 @@ const VILLAGE_ROLES = {
 };
 
 const MISSION_VOICE_CONNECT_ROLE_ID = process.env.MISSION_VOICE_CONNECT_ROLE_ID || '1497615181625430092';
-const MISSION_VOICE_HUB_NAME = process.env.MISSION_VOICE_HUB_NAME || 'Créer ton salon Mission';
+const MISSION_VOICE_HUB_NAME = process.env.MISSION_VOICE_HUB_NAME || '┃➕・Créer ton salon Mission';
 
 module.exports = {
   channelFor,

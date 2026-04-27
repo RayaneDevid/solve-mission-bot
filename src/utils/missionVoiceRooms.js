@@ -1,75 +1,56 @@
 'use strict';
-const fs = require('fs');
-const path = require('path');
 const { ChannelType } = require('discord.js');
 const { MISSION_VOICE_CONNECT_ROLE_ID, MISSION_VOICE_HUB_NAME } = require('../config');
+const {
+  deleteMissionVoiceRoom,
+  getMissionVoiceHub,
+  getMissionVoiceRoom,
+  listMissionVoiceRooms,
+  upsertMissionVoiceHub,
+  upsertMissionVoiceRoom,
+} = require('./supabase');
 
-const STATE_PATH = path.join(__dirname, '..', '..', 'data', 'mission-voice-rooms.json');
-const missionRoomPattern = /^Mission (\d+)$/;
+const missionRoomPattern = /^┃🎙️ ・Mission (\d+)$/;
 const creationQueues = new Map();
 
-function emptyState() {
-  return { hubs: {}, rooms: {} };
+function missionRoomName(num) {
+  return `┃🎙️ ・Mission ${num}`;
 }
 
-function readState() {
-  try {
-    return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      console.error({ event: 'missionVoice.state.readError', error: err.message });
-    }
-    return emptyState();
+async function registerMissionVoiceHub(guildId, channelId, categoryId) {
+  await upsertMissionVoiceHub({ guildId, channelId, categoryId });
+}
+
+async function registerMissionRoom(guildId, channelId, categoryId, ownerId, hubChannelId) {
+  await upsertMissionVoiceRoom({ guildId, channelId, categoryId, ownerId, hubChannelId });
+}
+
+async function unregisterMissionRoom(guildId, channelId) {
+  await deleteMissionVoiceRoom({ guildId, channelId });
+}
+
+async function isMissionVoiceHub(guildId, channelId) {
+  return Boolean(await getMissionVoiceHub({ guildId, channelId }));
+}
+
+async function isOrRegisterMissionVoiceHub(channel) {
+  if (!channel) return false;
+  if (await isMissionVoiceHub(channel.guild.id, channel.id)) return true;
+  if (
+    channel.type !== ChannelType.GuildVoice ||
+    channel.name !== MISSION_VOICE_HUB_NAME ||
+    !channel.parentId
+  ) {
+    return false;
   }
+
+  await registerMissionVoiceHub(channel.guild.id, channel.id, channel.parentId);
+  console.log({ event: 'missionVoice.hubRegistered', hubChannelId: channel.id, guildId: channel.guild.id });
+  return true;
 }
 
-function writeState(state) {
-  fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
-  fs.writeFileSync(STATE_PATH, `${JSON.stringify(state, null, 2)}\n`);
-}
-
-function ensureGuildBucket(state, guildId) {
-  state.hubs[guildId] ??= {};
-  state.rooms[guildId] ??= {};
-}
-
-function registerMissionVoiceHub(guildId, channelId, categoryId) {
-  const state = readState();
-  ensureGuildBucket(state, guildId);
-  state.hubs[guildId][channelId] = {
-    categoryId,
-    createdAt: new Date().toISOString(),
-  };
-  writeState(state);
-}
-
-function registerMissionRoom(guildId, channelId, categoryId, ownerId, hubChannelId) {
-  const state = readState();
-  ensureGuildBucket(state, guildId);
-  state.rooms[guildId][channelId] = {
-    categoryId,
-    ownerId,
-    hubChannelId,
-    createdAt: new Date().toISOString(),
-  };
-  writeState(state);
-}
-
-function unregisterMissionRoom(guildId, channelId) {
-  const state = readState();
-  if (!state.rooms[guildId]?.[channelId]) return;
-  delete state.rooms[guildId][channelId];
-  writeState(state);
-}
-
-function isMissionVoiceHub(guildId, channelId) {
-  const state = readState();
-  return Boolean(state.hubs[guildId]?.[channelId]);
-}
-
-function isMissionRoom(guildId, channelId) {
-  const state = readState();
-  return Boolean(state.rooms[guildId]?.[channelId]);
+async function isMissionRoom(guildId, channelId) {
+  return Boolean(await getMissionVoiceRoom({ guildId, channelId }));
 }
 
 function getNextMissionRoomName(guild, categoryId) {
@@ -83,7 +64,7 @@ function getNextMissionRoomName(guild, categoryId) {
 
   let num = 1;
   while (used.has(num)) num += 1;
-  return `Mission ${num}`;
+  return missionRoomName(num);
 }
 
 async function createMissionRoomForMember(newState) {
@@ -120,12 +101,12 @@ async function createMissionRoomForMember(newState) {
         { reason: 'Autoriser le rôle mission à rejoindre les salons mission temporaires' }
       );
 
-      registerMissionRoom(newState.guild.id, room.id, categoryId, newState.member.id, hubChannel.id);
+      await registerMissionRoom(newState.guild.id, room.id, categoryId, newState.member.id, hubChannel.id);
 
       if (newState.member.voice.channelId !== hubChannel.id) {
         if (room.members.size === 0) {
           await room.delete('Suppression car le membre a quitté le hub avant le déplacement').catch(() => {});
-          unregisterMissionRoom(newState.guild.id, room.id);
+          await unregisterMissionRoom(newState.guild.id, room.id);
         }
         return;
       }
@@ -148,7 +129,7 @@ async function createMissionRoomForMember(newState) {
 
       if (room?.members.size === 0) {
         await room.delete('Suppression après erreur de configuration').catch(() => {});
-        unregisterMissionRoom(newState.guild.id, room.id);
+        await unregisterMissionRoom(newState.guild.id, room.id);
       }
 
       throw err;
@@ -165,31 +146,36 @@ async function createMissionRoomForMember(newState) {
 }
 
 async function deleteMissionRoomIfEmpty(guild, channelId) {
-  if (!isMissionRoom(guild.id, channelId)) return;
+  if (!await isMissionRoom(guild.id, channelId)) return;
 
   const channel = await guild.channels.fetch(channelId).catch(() => null);
   if (!channel) {
-    unregisterMissionRoom(guild.id, channelId);
+    await unregisterMissionRoom(guild.id, channelId);
     return;
   }
 
   if (channel.type !== ChannelType.GuildVoice || channel.members.size > 0) return;
 
   await channel.delete('Salon mission temporaire vide');
-  unregisterMissionRoom(guild.id, channelId);
+  await unregisterMissionRoom(guild.id, channelId);
   console.log({ event: 'missionVoice.roomDeleted', roomId: channelId });
 }
 
 async function cleanupEmptyMissionRooms(client) {
-  const state = readState();
+  let rooms;
 
-  for (const [guildId, rooms] of Object.entries(state.rooms)) {
-    const guild = await client.guilds.fetch(guildId).catch(() => null);
+  try {
+    rooms = await listMissionVoiceRooms();
+  } catch (err) {
+    console.error({ event: 'missionVoice.cleanupError', error: err.message });
+    return;
+  }
+
+  for (const room of rooms) {
+    const guild = await client.guilds.fetch(room.guild_id).catch(() => null);
     if (!guild) continue;
 
-    for (const channelId of Object.keys(rooms)) {
-      await deleteMissionRoomIfEmpty(guild, channelId);
-    }
+    await deleteMissionRoomIfEmpty(guild, room.channel_id);
   }
 }
 
@@ -202,7 +188,7 @@ function scheduleDeleteMissionRoomIfEmpty(guild, channelId) {
 }
 
 async function handleMissionVoiceStateUpdate(oldState, newState) {
-  const joinedHub = newState.channelId && isMissionVoiceHub(newState.guild.id, newState.channelId);
+  const joinedHub = newState.channelId && await isOrRegisterMissionVoiceHub(newState.channel);
   const changedChannel = oldState.channelId !== newState.channelId;
 
   if (oldState.channelId && changedChannel) {
@@ -222,7 +208,7 @@ async function createMissionVoiceHub(interaction, category) {
   );
 
   if (existing) {
-    registerMissionVoiceHub(interaction.guild.id, existing.id, category.id);
+    await registerMissionVoiceHub(interaction.guild.id, existing.id, category.id);
     return { channel: existing, created: false };
   }
 
@@ -234,7 +220,7 @@ async function createMissionVoiceHub(interaction, category) {
   });
 
   await channel.lockPermissions();
-  registerMissionVoiceHub(interaction.guild.id, channel.id, category.id);
+  await registerMissionVoiceHub(interaction.guild.id, channel.id, category.id);
   return { channel, created: true };
 }
 

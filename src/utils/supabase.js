@@ -60,6 +60,75 @@ async function attachDiscordRefs(id, channelId, messageId) {
   if (error) throw error;
 }
 
+async function upsertMissionVoiceHub({ guildId, channelId, categoryId }) {
+  const { error } = await supabase
+    .from('mission_voice_hubs')
+    .upsert({
+      guild_id: guildId,
+      channel_id: channelId,
+      category_id: categoryId,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'guild_id,channel_id',
+    });
+  if (error) throw error;
+}
+
+async function getMissionVoiceHub({ guildId, channelId }) {
+  const { data, error } = await supabase
+    .from('mission_voice_hubs')
+    .select('*')
+    .eq('guild_id', guildId)
+    .eq('channel_id', channelId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function upsertMissionVoiceRoom({ guildId, channelId, categoryId, ownerId, hubChannelId }) {
+  const { error } = await supabase
+    .from('mission_voice_rooms')
+    .upsert({
+      guild_id: guildId,
+      channel_id: channelId,
+      category_id: categoryId,
+      owner_id: ownerId,
+      hub_channel_id: hubChannelId,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'guild_id,channel_id',
+    });
+  if (error) throw error;
+}
+
+async function getMissionVoiceRoom({ guildId, channelId }) {
+  const { data, error } = await supabase
+    .from('mission_voice_rooms')
+    .select('*')
+    .eq('guild_id', guildId)
+    .eq('channel_id', channelId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteMissionVoiceRoom({ guildId, channelId }) {
+  const { error } = await supabase
+    .from('mission_voice_rooms')
+    .delete()
+    .eq('guild_id', guildId)
+    .eq('channel_id', channelId);
+  if (error) throw error;
+}
+
+async function listMissionVoiceRooms() {
+  const { data, error } = await supabase
+    .from('mission_voice_rooms')
+    .select('*');
+  if (error) throw error;
+  return data;
+}
+
 const formatMissionNumber = (n) => `#${String(n).padStart(5, '0')}`;
 
 module.exports = {
@@ -69,5 +138,11 @@ module.exports = {
   getMissionById,
   updateMissionDescription,
   attachDiscordRefs,
+  upsertMissionVoiceHub,
+  getMissionVoiceHub,
+  upsertMissionVoiceRoom,
+  getMissionVoiceRoom,
+  deleteMissionVoiceRoom,
+  listMissionVoiceRooms,
   formatMissionNumber,
 };
